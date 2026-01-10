@@ -1,4 +1,4 @@
-# Machnine Learning Operations - Final Project
+# Machine Learning Operations - Final Project
 
 ## Project Description:
 

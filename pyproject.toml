@@ -7,7 +7,7 @@ name = "mlops_project"
 version = "0.0.1"
 description = "MLOps final project - Football match outcome prediction challenge"
 authors = [
-  { name = "tyra_nguyen", email = "your@email.com" },
+  { name = "tyra_nguyen_and_nico_sherpa", email = "your@email.com" },
 ]
 
 keywords = ["machine learning", "MLOps"]

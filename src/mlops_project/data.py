@@ -1,23 +1,109 @@
 from pathlib import Path
-
 import typer
 from torch.utils.data import Dataset
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
 class MyDataset(Dataset):
-    """My custom dataset."""
+    """Loading and preprocessing historical football match data."""
 
     def __init__(self, data_path: Path) -> None:
         self.data_path = data_path
 
     def __len__(self) -> int:
         """Return the length of the dataset."""
+        df = pd.read_csv(self.data_path)
+        return len(df)
 
     def __getitem__(self, index: int):
         """Return a given sample from the dataset."""
+        df = pd.read_csv(self.data_path)
+        return df.iloc[index]
 
     def preprocess(self, output_folder: Path) -> None:
         """Preprocess the raw data and save it to the output folder."""
+        df = pd.read_csv(self.data_path)
+        df['match_date'] = pd.to_datetime(df['match_date'], errors="coerce")
+
+        numeric_cols = []
+        bool_cols = []
+        cat_cols = []
+
+        # =====================
+        # Home team match history
+        # =====================
+        for i in range (1,11):
+            numeric_cols += [
+                f"home_team_history_goal_{i}",
+                f"home_team_history_opponent_goal_{i}",
+                f"home_team_history_rating_{i}",
+                f"home_team_history_opponent_rating_{i}"
+            ]
+
+            bool_cols += [
+                f"home_team_history_is_play_home_{i}",
+                f"home_team_history_is_cup_{i}"
+            ]
+
+            cat_cols += [
+                f"home_team_history_coach_{i}",
+                f"home_team_history_league_id_{i}"
+            ]
+
+            # Obtaining integer number of days instead of datetime object
+            df[f"home_team_history_match_days_since_{i}"] = (
+                df["match_date"] - pd.to_datetime(df[f"home_team_history_match_date_{i}"], errors="coerce")
+            ).dt.days
+
+            numeric_cols.append(f"home_team_history_match_days_since_{i}")
+
+        # =====================
+        # Away team match history
+        # =====================
+        for i in range(1, 11):
+            numeric_cols += [
+                f"away_team_history_goal_{i}",
+                f"away_team_history_opponent_goal_{i}",
+                f"away_team_history_rating_{i}",
+                f"away_team_history_opponent_rating_{i}",
+            ]
+            bool_cols += [
+                f"away_team_history_is_play_home_{i}",
+                f"away_team_history_is_cup_{i}",
+            ]
+            cat_cols += [
+                f"away_team_history_coach_{i}",
+                f"away_team_history_league_id_{i}",
+            ]
+            df[f"away_team_history_match_days_since_{i}"] = (
+                df["match_date"]
+                - pd.to_datetime(df[f"away_team_history_match_date_{i}"], errors="coerce")
+            ).dt.days
+            numeric_cols.append(f"away_team_history_match_days_since_{i}")
+
+        # Dropping raw historical dates (redundant data)
+        df = df.drop(columns=[c for c in df.columns if "history_match_date" in c])
+
+        # Encoding categorical features to integers
+        cat_encoders = {}
+        for col in cat_cols:
+            label = LabelEncoder()
+            df[col] = label.fit_transform(df[col].astype(str))
+            cat_encoders[col] = label
+
+        # Scaling numerical features for consistency
+        scaler = StandardScaler()
+        df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+
+        # Filling in NaN values
+        df = df.fillna(0)
+
+        # Save preprocessed data
+        output_folder.mkdir(parents=True, exist_ok=True)
+        output_file = output_folder / "processed_data.csv"
+        df.to_csv(output_file, index=False)
+        print(f"Preprocessed data saved to {output_file}")
 
 def preprocess(data_path: Path, output_folder: Path) -> None:
     print("Preprocessing data...")

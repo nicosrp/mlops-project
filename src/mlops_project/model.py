@@ -53,4 +53,5 @@ if __name__ == "__main__":
     x = torch.rand(batch_size, seq_len, feature_dim)
     out = model(x)
 
+    print(f"Input shape of model: {x.shape}")
     print(f"Output shape of model: {out.shape}")

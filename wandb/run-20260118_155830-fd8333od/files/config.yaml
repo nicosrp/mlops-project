@@ -1,0 +1,43 @@
+_wandb:
+    value:
+        cli_version: 0.24.0
+        e:
+            bao3obbe701mko306ar9wz14cscgy1ic:
+                codePath: wandb_init.py
+                codePathLocal: wandb_init.py
+                cpu_count: 14
+                cpu_count_logical: 18
+                disk:
+                    /:
+                        total: "509722226688"
+                        used: "376402550784"
+                email: tyranguyen7@gmail.com
+                executable: C:\Users\tyran\OneDrive\Desktop\MLOps Project\mlops-project\env\Scripts\python.exe
+                git:
+                    commit: aa8b87cfa52d7bb29d17db6821d1ede964abec0e
+                    remote: https://github.com/nicosrp/mlops-project.git
+                host: tyra
+                memory:
+                    total: "16573128704"
+                os: Windows-11-10.0.26100-SP0
+                program: C:\Users\tyran\OneDrive\Desktop\MLOps Project\mlops-project\wandb_init.py
+                python: CPython 3.12.7
+                root: C:\Users\tyran\OneDrive\Desktop\MLOps Project\mlops-project
+                startedAt: "2026-01-18T14:58:30.066766Z"
+                writerId: bao3obbe701mko306ar9wz14cscgy1ic
+        m: []
+        python_version: 3.12.7
+        t:
+            "1":
+                - 105
+            "2":
+                - 105
+            "3":
+                - 2
+                - 13
+            "4": 3.12.7
+            "5": 0.24.0
+            "8":
+                - 3
+            "12": 0.24.0
+            "13": windows-amd64

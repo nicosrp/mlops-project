@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # Dummy block
     batch_size = 1
     seq_len = 10
-    feature_dim = 8
+    feature_dim = 18
 
     model = Model(input_size=feature_dim)
     x = torch.rand(batch_size, seq_len, feature_dim)

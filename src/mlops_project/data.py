@@ -1,25 +1,65 @@
 from pathlib import Path
 import typer
-from torch.utils.data import Dataset
 import pandas as pd
+import torch
+from torch.utils.data import Dataset
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
 class MyDataset(Dataset):
-    """Loading and preprocessing historical football match data."""
+    """Loading preprocessed historical football match data."""
 
-    def __init__(self, data_path: Path) -> None:
+    def __init__(self, data_path: Path, seq_len: int = 10) -> None:
         self.data_path = data_path
+        self.seq_len = seq_len
+        self.df = pd.read_csv(data_path)
+
+        # Encoding target labels
+        self.label_map = {"home": 0, "draw": 1, "away": 2}
+        self.y = self.df["target"].map(self.label_map).values.astype("int64")
+
+        # Dropping non-feature data not to be fed into model (i.e., redundant)
+        drop_cols = [
+            "id",
+            "target",
+            "home_team_name",
+            "away_team_name",
+            "league_name",
+            "match_date"
+        ]
+        self.df = self.df.drop(columns=[c for c in drop_cols if c in self.df.columns])
+
+        # Grouping features per historical match
+        self.seq_columns = []
+        for i in range(1, self.seq_len + 1):
+            cols_i = [c for c in self.df.columns if c.endswith(f"_{i}")]
+            self.seq_columns.append(cols_i)
+
+        # Input size per match
+        self.input_size = len(self.seq_columns[0])
+
+        self.df = self.df.fillna(0)
 
     def __len__(self) -> int:
         """Return the length of the dataset."""
-        df = pd.read_csv(self.data_path)
-        return len(df)
+        return len(self.df)
 
     def __getitem__(self, index: int):
-        """Return a given sample from the dataset."""
-        df = pd.read_csv(self.data_path)
-        return df.iloc[index]
+        """
+        Return a given sample from the dataset.
+        Shape: (seq_len, features_per_match)
+        """
+        row = self.df.iloc[index]
+
+        # Grouping columns by historical match number
+        seq = []
+        for cols in self.seq_columns:
+            match_features = row[cols].values.astype("float32")
+            seq.append(match_features)
+        
+        x = torch.tensor(seq, dtype=torch.float32) # shape: (seq_len, features_per_match)
+        y = torch.tensor(self.y[index], dtype=torch.long)
+        return x, y
 
     def preprocess(self, output_folder: Path) -> None:
         """Preprocess the raw data and save it to the output folder."""
@@ -82,15 +122,13 @@ class MyDataset(Dataset):
             ).dt.days
             numeric_cols.append(f"away_team_history_match_days_since_{i}")
 
-        # Dropping raw historical dates (redundant data)
+        # Dropping raw historical match dates (redundant data)
         df = df.drop(columns=[c for c in df.columns if "history_match_date" in c])
 
         # Encoding categorical features to integers
-        cat_encoders = {}
         for col in cat_cols:
-            label = LabelEncoder()
-            df[col] = label.fit_transform(df[col].astype(str))
-            cat_encoders[col] = label
+            encoder = LabelEncoder()
+            df[col] = encoder.fit_transform(df[col].astype(str))
 
         # Scaling numerical features for consistency
         scaler = StandardScaler()
@@ -103,6 +141,7 @@ class MyDataset(Dataset):
         output_folder.mkdir(parents=True, exist_ok=True)
         output_file = output_folder / "processed_data.csv"
         df.to_csv(output_file, index=False)
+
         print(f"Preprocessed data saved to {output_file}")
 
 def preprocess(data_path: Path, output_folder: Path) -> None:

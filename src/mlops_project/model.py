@@ -1,5 +1,6 @@
-from torch import nn
 import torch
+from torch import nn
+
 
 class Model(nn.Module):
     """
@@ -17,7 +18,7 @@ class Model(nn.Module):
             dropout: float = 0.3
     ):
         super().__init__()
-        
+
         # LSTM
         self.lstm = nn.LSTM(
             input_size=input_size,
@@ -36,7 +37,7 @@ class Model(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-    
+
         # LSTM output: (batch_size, seq_len, hidden_size)
         out, (h_n, c_n) = self.lstm(x)
         last_hidden = h_n[-1]   # shape (batch_size, hidden_size)

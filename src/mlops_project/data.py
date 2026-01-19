@@ -1,9 +1,10 @@
 from pathlib import Path
-import typer
+
 import pandas as pd
 import torch
-from torch.utils.data import Dataset
+import typer
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from torch.utils.data import Dataset
 
 
 class MyDataset(Dataset):
@@ -56,7 +57,7 @@ class MyDataset(Dataset):
         for cols in self.seq_columns:
             match_features = row[cols].values.astype("float32")
             seq.append(match_features)
-        
+
         x = torch.tensor(seq, dtype=torch.float32) # shape: (seq_len, features_per_match)
         y = torch.tensor(self.y[index], dtype=torch.long)
         return x, y

@@ -1,14 +1,15 @@
+import logging
+from pathlib import Path
+
+import hydra
 import torch
+from omegaconf import DictConfig, OmegaConf
 from torch import nn
 from torch.utils.data import DataLoader, random_split
-import hydra
-from omegaconf import DictConfig, OmegaConf
-import wandb
-from pathlib import Path
-import logging
 
-from mlops_project.model import Model
+import wandb
 from mlops_project.data import MyDataset
+from mlops_project.model import Model
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ log = logging.getLogger(__name__)
 def train(cfg: DictConfig) -> None:
 
     torch.manual_seed(cfg.training.seed)
-    
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Weights and Biases logging
@@ -37,7 +38,7 @@ def train(cfg: DictConfig) -> None:
         Path(cfg.paths.dataset),
         seq_len=cfg.hyperparameters.seq_len
     )
-    
+
     # Train/validation split
     train_size = int(cfg.training.train_split * len(dataset))
     val_size = len(dataset) - train_size
@@ -80,11 +81,11 @@ def train(cfg: DictConfig) -> None:
             loss = criterion(output, y)
             loss.backward()
             optimizer.step()
-            
+
             total_loss += loss.item() * x.size(0)
-        
+
         train_loss = total_loss / len(train_loader.dataset)
-    
+
         # Validation
         model.eval()
         total_val_loss = 0

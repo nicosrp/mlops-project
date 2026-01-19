@@ -47,6 +47,11 @@ def test(ctx: Context) -> None:
     ctx.run("coverage report -m -i", echo=True, pty=not WINDOWS)
 
 @task
+def profile(ctx: Context) -> None:
+    """Profile training performance."""
+    ctx.run(f"python src/{PROJECT_NAME}/profile.py", echo=True, pty=not WINDOWS)
+
+@task
 def docker_build(ctx: Context, progress: str = "plain") -> None:
     """Build docker images."""
     ctx.run(

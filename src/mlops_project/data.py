@@ -20,14 +20,7 @@ class MyDataset(Dataset):
         self.y = self.df["target"].map(self.label_map).values.astype("int64")
 
         # Dropping non-feature data not to be fed into model (i.e., redundant)
-        drop_cols = [
-            "id",
-            "target",
-            "home_team_name",
-            "away_team_name",
-            "league_name",
-            "match_date"
-        ]
+        drop_cols = ["id", "target", "home_team_name", "away_team_name", "league_name", "match_date"]
         self.df = self.df.drop(columns=[c for c in drop_cols if c in self.df.columns])
 
         # Grouping features per historical match
@@ -58,14 +51,14 @@ class MyDataset(Dataset):
             match_features = row[cols].values.astype("float32")
             seq.append(match_features)
 
-        x = torch.tensor(seq, dtype=torch.float32) # shape: (seq_len, features_per_match)
+        x = torch.tensor(seq, dtype=torch.float32)  # shape: (seq_len, features_per_match)
         y = torch.tensor(self.y[index], dtype=torch.long)
         return x, y
 
     def preprocess(self, output_folder: Path) -> None:
         """Preprocess the raw data and save it to the output folder."""
         df = pd.read_csv(self.data_path)
-        df['match_date'] = pd.to_datetime(df['match_date'], errors="coerce")
+        df["match_date"] = pd.to_datetime(df["match_date"], errors="coerce")
 
         numeric_cols = []
         bool_cols = []
@@ -74,23 +67,17 @@ class MyDataset(Dataset):
         # =====================
         # Home team match history
         # =====================
-        for i in range (1,11):
+        for i in range(1, 11):
             numeric_cols += [
                 f"home_team_history_goal_{i}",
                 f"home_team_history_opponent_goal_{i}",
                 f"home_team_history_rating_{i}",
-                f"home_team_history_opponent_rating_{i}"
+                f"home_team_history_opponent_rating_{i}",
             ]
 
-            bool_cols += [
-                f"home_team_history_is_play_home_{i}",
-                f"home_team_history_is_cup_{i}"
-            ]
+            bool_cols += [f"home_team_history_is_play_home_{i}", f"home_team_history_is_cup_{i}"]
 
-            cat_cols += [
-                f"home_team_history_coach_{i}",
-                f"home_team_history_league_id_{i}"
-            ]
+            cat_cols += [f"home_team_history_coach_{i}", f"home_team_history_league_id_{i}"]
 
             # Obtaining integer number of days instead of datetime object
             df[f"home_team_history_match_days_since_{i}"] = (
@@ -118,8 +105,7 @@ class MyDataset(Dataset):
                 f"away_team_history_league_id_{i}",
             ]
             df[f"away_team_history_match_days_since_{i}"] = (
-                df["match_date"]
-                - pd.to_datetime(df[f"away_team_history_match_date_{i}"], errors="coerce")
+                df["match_date"] - pd.to_datetime(df[f"away_team_history_match_date_{i}"], errors="coerce")
             ).dt.days
             numeric_cols.append(f"away_team_history_match_days_since_{i}")
 
@@ -145,8 +131,12 @@ class MyDataset(Dataset):
 
         print(f"Preprocessed data saved to {output_file}")
 
+
 def preprocess(data_path: Path, output_folder: Path) -> None:
     print("Preprocessing data...")
+    # If data_path is a directory, use train.csv from it
+    if data_path.is_dir():
+        data_path = data_path / "train.csv"
     dataset = MyDataset(data_path)
     dataset.preprocess(output_folder)
 

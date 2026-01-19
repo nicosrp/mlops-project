@@ -1,4 +1,6 @@
 [core]
     remote = storage
 ['remote "storage"']
-    url = gdrive://1C5_coEYb2ZvLYPq4A6RGO7yCp1GJkgI_
+    url = gdrive://1kau2upzOnWRSpUZndTkGygA5hepRRYNK
+    gdrive_use_service_account = true
+    gdrive_service_account_json_file_path = ../.secrets/gcp-service-account.json

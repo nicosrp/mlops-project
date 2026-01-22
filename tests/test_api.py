@@ -68,9 +68,9 @@ def test_predict_endpoint_structure(client, sample_input):
         assert "away" in data["probabilities"]
 
 
-@pytest.mark.skip(reason="Temporarily disabled - model checkpoint compatibility issue")
 def test_predict_endpoint_with_mock_model(client, sample_input, monkeypatch):
     """Test predict endpoint with a mocked model."""
+    pytest.skip("Temporarily disabled - model checkpoint compatibility issue")
     # Create a mock model - input_size should be 22 (feature_dim) * 10 (seq_len) = 220
     # Actually, the input is (batch, seq_len, features), so input_size = 22
     mock_model = Model(input_size=22, hidden_size=64, num_layers=2, output_size=3, use_attention=True)

@@ -36,11 +36,11 @@ def test_model_with_different_hidden_size():
     """Test model works with different hidden sizes."""
     model = Model(input_size=18, hidden_size=128, num_layers=2)
     model.eval()  # Set to eval mode to avoid BatchNorm issues with batch_size=1
-    x = torch.randn(1, 10, 18)
+    x = torch.randn(2, 10, 18)  # Use batch_size=2 to avoid BatchNorm issues
 
     output = model(x)
 
-    assert output.shape == (1, 3)
+    assert output.shape == (2, 3)
 
 
 def test_model_parameters_count():

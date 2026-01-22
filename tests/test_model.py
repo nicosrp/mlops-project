@@ -35,6 +35,7 @@ def test_model_output_shape():
 def test_model_with_different_hidden_size():
     """Test model works with different hidden sizes."""
     model = Model(input_size=18, hidden_size=128, num_layers=2)
+    model.eval()  # Set to eval mode to avoid BatchNorm issues with batch_size=1
     x = torch.randn(1, 10, 18)
 
     output = model(x)

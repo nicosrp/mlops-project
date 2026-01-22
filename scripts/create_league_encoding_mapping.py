@@ -26,7 +26,7 @@ for raw_id, enc_id in list(mapping.items())[:20]:
     )
     print(f"  {raw_id} ({league_name}) → {enc_id}")
 
-with open("league_id_to_encoded.json", "w") as f:
+with open("data/frontend/league_id_to_encoded.json", "w") as f:
     json.dump(mapping, f, indent=2)
 
-print("\n✅ Saved to league_id_to_encoded.json")
+print("\n✅ Saved to data/frontend/league_id_to_encoded.json")

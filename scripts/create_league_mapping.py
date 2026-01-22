@@ -20,7 +20,7 @@ for league_id, league_name in list(mapping_sorted.items())[:10]:
     print(f"  {league_id}: {league_name}")
 
 # Save to JSON
-with open("league_mapping.json", "w") as f:
+with open("data/frontend/league_mapping.json", "w") as f:
     json.dump(mapping_sorted, f, indent=2)
 
-print(f"\n✅ Saved to league_mapping.json")
+print(f"\n✅ Saved to data/frontend/league_mapping.json")

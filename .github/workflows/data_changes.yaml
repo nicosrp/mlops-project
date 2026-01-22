@@ -1,0 +1,50 @@
+name: Data Changes
+
+# Trigger when DVC files change
+on:
+  push:
+    paths:
+      - 'data/**.dvc'
+      - '.dvc/config'
+  pull_request:
+    paths:
+      - 'data/**.dvc'
+      - '.dvc/config'
+
+jobs:
+  validate-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install DVC
+        run: |
+          pip install dvc[gs]
+
+      - name: Check DVC status
+        run: |
+          echo "🔍 Detected changes in DVC tracked files"
+          dvc status
+
+      - name: Validate DVC files
+        run: |
+          echo "✅ Validating DVC configuration..."
+          dvc doctor
+
+      - name: Report data changes
+        run: |
+          echo "📊 Data version has changed!"
+          echo "Changed files:"
+          git diff --name-only HEAD~1 HEAD | grep -E '\.dvc$' || echo "No .dvc files in this push"
+          echo ""
+          echo "⚠️  Action Required:"
+          echo "1. Verify data integrity"
+          echo "2. Re-run tests with new data"
+          echo "3. Consider retraining model if data distribution changed"

@@ -1,0 +1,63 @@
+name: Model Registry Changes
+
+# Trigger when model files change
+on:
+  push:
+    paths:
+      - 'models/**'
+      - 'check_model_hash.py'
+      - 'check_wandb_artifacts.py'
+  pull_request:
+    paths:
+      - 'models/**'
+
+jobs:
+  validate-model:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Check model hash
+        run: |
+          echo "🔍 Checking model integrity..."
+          python check_model_hash.py
+        continue-on-error: true
+
+      - name: Validate model can load
+        run: |
+          echo "✅ Validating model can be loaded..."
+          python check_model.py
+        continue-on-error: true
+
+      - name: List model files
+        run: |
+          echo "📦 Model files in repository:"
+          ls -lh models/*.pth 2>/dev/null || echo "No .pth files found"
+          echo ""
+          echo "📊 Model directory structure:"
+          tree models/ || find models/ -type f
+
+      - name: Report model changes
+        run: |
+          echo "🤖 Model registry has been updated!"
+          echo ""
+          echo "Changed files:"
+          git diff --name-only HEAD~1 HEAD | grep -E 'models/' || echo "No model files in this push"
+          echo ""
+          echo "⚠️  Action Required:"
+          echo "1. Verify model performance hasn't degraded"
+          echo "2. Update API deployment if needed"
+          echo "3. Check W&B artifacts are synced"
+          echo "4. Consider A/B testing before full rollout"

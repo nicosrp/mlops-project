@@ -74,7 +74,9 @@ def filter_by_time(df: pd.DataFrame, hours: int) -> pd.DataFrame:
     return df[df["time"] >= cutoff_time]
 
 
-def standardize_dataframes(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def standardize_dataframes(
+    reference_data: pd.DataFrame, current_data: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Standardize column names between reference and current data.
 

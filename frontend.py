@@ -40,7 +40,7 @@ st.markdown(
 # Load example games
 # ======================
 try:
-    with open("example_games_real.json") as f:
+    with open("data/frontend/example_games_real.json") as f:
         example_games_data = json.load(f)
     example_options = ["➕ Custom Match (enter manually)"] + [f"{game['name']}" for game in example_games_data]
 except FileNotFoundError:
@@ -51,9 +51,9 @@ except FileNotFoundError:
 # Load league mappings
 # ======================
 try:
-    with open("league_mapping.json") as f:
+    with open("data/frontend/league_mapping.json") as f:
         league_mapping = json.load(f)
-    with open("league_id_to_encoded.json") as f:
+    with open("data/frontend/league_id_to_encoded.json") as f:
         league_id_to_encoded = json.load(f)
 except FileNotFoundError:
     st.error("❌ League mapping files not found. Run create_league_mapping.py first.")

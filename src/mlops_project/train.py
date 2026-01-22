@@ -221,6 +221,7 @@ def train(cfg: DictConfig) -> None:
         "hidden_size": cfg.hyperparameters.hidden_size,
         "num_layers": cfg.hyperparameters.num_layers,
         "dropout": cfg.hyperparameters.dropout,
+        "use_attention": cfg.hyperparameters.get("use_attention", True),
     }
     torch.save(checkpoint, model_path)
 

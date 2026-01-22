@@ -72,7 +72,7 @@ def test_predict_endpoint_with_mock_model(client, sample_input, monkeypatch):
     """Test predict endpoint with a mocked model."""
     # Create a mock model - input_size should be 22 (feature_dim) * 10 (seq_len) = 220
     # Actually, the input is (batch, seq_len, features), so input_size = 22
-    mock_model = Model(input_size=22, hidden_size=64, num_layers=2, output_size=3)
+    mock_model = Model(input_size=22, hidden_size=64, num_layers=2, output_size=3, use_attention=True)
     mock_model.eval()  # Important: set to eval mode to avoid BatchNorm issues
 
     # Monkeypatch the global model in the api module
@@ -114,7 +114,7 @@ def test_predict_endpoint_no_model(client, sample_input, monkeypatch):
 
 def test_predict_endpoint_wrong_feature_dimension(client, monkeypatch):
     """Test predict endpoint with wrong feature dimensions."""
-    mock_model = Model(input_size=444, hidden_size=64, num_layers=2, output_size=3)
+    mock_model = Model(input_size=444, hidden_size=64, num_layers=2, output_size=3, use_attention=True)
     mock_model.eval()
 
     import mlops_project.api as api_module
@@ -143,7 +143,7 @@ def test_metrics_endpoint(client):
 
 def test_predict_probabilities_sum_to_one(client, sample_input, monkeypatch):
     """Test that prediction probabilities sum to 1."""
-    mock_model = Model(input_size=22, hidden_size=64, num_layers=2, output_size=3)
+    mock_model = Model(input_size=22, hidden_size=64, num_layers=2, output_size=3, use_attention=True)
     mock_model.eval()
 
     import mlops_project.api as api_module

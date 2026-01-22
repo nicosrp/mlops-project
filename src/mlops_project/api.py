@@ -134,6 +134,7 @@ async def load_model() -> None:
                 num_layers=checkpoint.get("num_layers", 2),
                 output_size=3,
                 dropout=checkpoint.get("dropout", 0.3),
+                use_attention=checkpoint.get("use_attention", True),
             )
             pytorch_model.load_state_dict(checkpoint["model_state_dict"])
             pytorch_model.eval()

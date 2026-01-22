@@ -17,10 +17,20 @@ def export_to_onnx():
     hidden_size = checkpoint.get("hidden_size", 64)
     num_layers = checkpoint.get("num_layers", 2)
     dropout = checkpoint.get("dropout", 0.3)
+    use_attention = checkpoint.get("use_attention", True)
 
-    print(f"Model config: input_size={input_size}, hidden_size={hidden_size}, num_layers={num_layers}")
+    print(
+        f"Model config: input_size={input_size}, hidden_size={hidden_size}, num_layers={num_layers}, use_attention={use_attention}"
+    )
 
-    model = Model(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, output_size=3, dropout=dropout)
+    model = Model(
+        input_size=input_size,
+        hidden_size=hidden_size,
+        num_layers=num_layers,
+        output_size=3,
+        dropout=dropout,
+        use_attention=use_attention,
+    )
 
     # Load trained weights
     if "model_state_dict" in checkpoint:

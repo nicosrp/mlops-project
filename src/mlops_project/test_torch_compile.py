@@ -19,9 +19,17 @@ def test_torch_compile():
     hidden_size = checkpoint.get("hidden_size", 64)
     num_layers = checkpoint.get("num_layers", 2)
     dropout = checkpoint.get("dropout", 0.3)
+    use_attention = checkpoint.get("use_attention", True)
 
     # Create model
-    model = Model(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, output_size=3, dropout=dropout)
+    model = Model(
+        input_size=input_size,
+        hidden_size=hidden_size,
+        num_layers=num_layers,
+        output_size=3,
+        dropout=dropout,
+        use_attention=use_attention,
+    )
 
     # Load weights
     if "model_state_dict" in checkpoint:

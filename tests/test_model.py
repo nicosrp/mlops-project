@@ -49,3 +49,54 @@ def test_model_parameters_count():
     params = sum(p.numel() for p in model.parameters())
 
     assert params > 0
+
+
+def test_model_with_attention():
+    """Test model works with attention mechanism."""
+    model = Model(input_size=22, hidden_size=64, num_layers=2, use_attention=True)
+    x = torch.randn(2, 10, 22)
+
+    output = model(x)
+
+    assert output.shape == (2, 3)
+
+
+def test_model_without_attention():
+    """Test model works without attention mechanism."""
+    model = Model(input_size=22, hidden_size=64, num_layers=2, use_attention=False)
+    x = torch.randn(2, 10, 22)
+
+    output = model(x)
+
+    assert output.shape == (2, 3)
+
+
+def test_model_dropout_parameter():
+    """Test model dropout parameter is set correctly."""
+    model = Model(input_size=22, hidden_size=64, num_layers=2, dropout=0.5)
+    assert model.lstm.dropout > 0
+
+
+def test_model_eval_mode():
+    """Test model can be set to eval mode."""
+    model = Model(input_size=22, hidden_size=64, num_layers=2)
+    model.eval()
+
+    # In eval mode, dropout should be disabled
+    x = torch.randn(1, 10, 22)
+    output1 = model(x)
+    output2 = model(x)
+
+    # Outputs should be identical in eval mode
+    assert torch.allclose(output1, output2)
+
+
+def test_model_train_mode():
+    """Test model can be set to train mode."""
+    model = Model(input_size=22, hidden_size=64, num_layers=2, dropout=0.3)
+    model.train()
+
+    x = torch.randn(2, 10, 22)  # batch_size=2 (BatchNorm requires >1 in train mode)
+    # Just check it doesn't crash in train mode
+    output = model(x)
+    assert output.shape == (2, 3)

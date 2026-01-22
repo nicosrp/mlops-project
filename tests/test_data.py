@@ -52,3 +52,45 @@ def test_dataset_input_size(data_path):
     """Test dataset has valid input size."""
     dataset = MyDataset(data_path)
     assert dataset.input_size > 0
+
+
+def test_dataset_with_different_seq_len(data_path):
+    """Test dataset works with different sequence lengths."""
+    dataset = MyDataset(data_path, seq_len=5)
+    x, y = dataset[0]
+
+    assert x.shape == (5, dataset.input_size)
+    assert isinstance(y, torch.Tensor)
+
+
+def test_dataset_first_and_last_item(data_path):
+    """Test dataset can access first and last items."""
+    dataset = MyDataset(data_path, seq_len=10)
+
+    # First item
+    x_first, y_first = dataset[0]
+    assert x_first.shape == (10, dataset.input_size)
+
+    # Last item
+    x_last, y_last = dataset[len(dataset) - 1]
+    assert x_last.shape == (10, dataset.input_size)
+
+
+def test_dataset_consistency(data_path):
+    """Test dataset returns same data for same index."""
+    dataset = MyDataset(data_path, seq_len=10)
+
+    x1, y1 = dataset[0]
+    x2, y2 = dataset[0]
+
+    assert torch.equal(x1, x2)
+    assert torch.equal(y1, y2)
+
+
+def test_dataset_feature_types(data_path):
+    """Test dataset features are float tensors."""
+    dataset = MyDataset(data_path, seq_len=10)
+    x, y = dataset[0]
+
+    assert x.dtype == torch.float32
+    assert y.dtype == torch.long

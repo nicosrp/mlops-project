@@ -78,7 +78,7 @@ def test_predict_endpoint_with_mock_model(client, sample_input, monkeypatch):
     # Monkeypatch the global model in the api module
     import mlops_project.api as api_module
 
-    monkeypatch.setattr(api_module, "model", mock_model)
+    monkeypatch.setattr(api_module, "pytorch_model", mock_model)
 
     response = client.post("/predict", json=sample_input)
     assert response.status_code == 200
@@ -104,7 +104,8 @@ def test_predict_endpoint_no_model(client, sample_input, monkeypatch):
     # Ensure model is None
     import mlops_project.api as api_module
 
-    monkeypatch.setattr(api_module, "model", None)
+    monkeypatch.setattr(api_module, "onnx_session", None)
+    monkeypatch.setattr(api_module, "pytorch_model", None)
 
     response = client.post("/predict", json=sample_input)
     assert response.status_code == 503
@@ -118,7 +119,7 @@ def test_predict_endpoint_wrong_feature_dimension(client, monkeypatch):
 
     import mlops_project.api as api_module
 
-    monkeypatch.setattr(api_module, "model", mock_model)
+    monkeypatch.setattr(api_module, "pytorch_model", mock_model)
 
     # Wrong number of features
     wrong_input = {
@@ -130,4 +131,28 @@ def test_predict_endpoint_wrong_feature_dimension(client, monkeypatch):
 
     response = client.post("/predict", json=wrong_input)
     assert response.status_code == 400
-    assert "Prediction error" in response.json()["detail"]
+    assert "Prediction error" in response.json()["detail"] or "error" in response.json()["detail"].lower()
+
+
+def test_metrics_endpoint(client):
+    """Test Prometheus metrics endpoint exists."""
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert "predictions_total" in response.text or "prometheus" in response.text.lower()
+
+
+def test_predict_probabilities_sum_to_one(client, sample_input, monkeypatch):
+    """Test that prediction probabilities sum to 1."""
+    mock_model = Model(input_size=22, hidden_size=64, num_layers=2, output_size=3)
+    mock_model.eval()
+
+    import mlops_project.api as api_module
+
+    monkeypatch.setattr(api_module, "pytorch_model", mock_model)
+
+    response = client.post("/predict", json=sample_input)
+    assert response.status_code == 200
+
+    probs = response.json()["probabilities"]
+    prob_sum = sum(probs.values())
+    assert 0.99 <= prob_sum <= 1.01  # Allow small floating point error

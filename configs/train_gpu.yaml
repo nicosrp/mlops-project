@@ -1,0 +1,26 @@
+hyperparameters:
+  batch_size: 64  # Larger batch size for GPU
+  epochs: 30  # More epochs with GPU
+  lr: 0.001  # Higher LR with larger batch
+  hidden_size: 128  # Larger model with GPU
+  num_layers: 3
+  dropout: 0.4
+  seq_len: 10
+  use_attention: true  # Enable attention mechanism
+  use_focal_loss: true  # Use focal loss for better class handling
+
+training:
+  train_split: 0.8
+  seed: 42
+
+paths:
+  dataset: "data/processed/processed_data.csv"
+  model_dir: "models"
+
+wandb:
+  project: "football-lstm"
+  entity: "tyranguyen7-danmarks-tekniske-universitet-dtu"
+  mode: "online"
+
+gcp:
+  bucket_models: "mlops-484822-models"

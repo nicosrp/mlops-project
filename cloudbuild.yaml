@@ -1,0 +1,29 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'train.dockerfile'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/football-lstm-trainer:latest'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/football-lstm-trainer:$BUILD_ID'
+      - '.'
+
+  # Push the image to GCR
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/football-lstm-trainer:latest'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/football-lstm-trainer:$BUILD_ID'
+
+images:
+  - 'gcr.io/$PROJECT_ID/football-lstm-trainer:latest'
+  - 'gcr.io/$PROJECT_ID/football-lstm-trainer:$BUILD_ID'
+
+timeout: 1800s

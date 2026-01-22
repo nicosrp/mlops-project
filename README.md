@@ -13,10 +13,19 @@ The directory structure is as follows:
 ├── .github/                        # GitHub Actions workflows
 │   └── workflows/
 │       ├── ci.yaml                 # CI tests (Ubuntu/macOS/Windows)
-│       └── docker.yaml             # Docker build pipeline
-├── configs/                        # Configuration files
-│   └── train.yaml                  # Hydra training config
+│       ├── docker.yaml             # Docker build pipeline
+│       ├── data_changes.yaml       # Trigger on DVC data changes
+│       └── model_changes.yaml      # Trigger on model registry changes
+├── configs/                        # Hydra configuration files
+│   ├── train.yaml                  # Main training config
+│   ├── train_gcp.yaml              # GCP training config
+│   ├── train_gpu.yaml              # GPU training config
+│   └── sweep.yaml                  # W&B sweep config
 ├── data/                           # Data directory (DVC tracked)
+│   ├── frontend/                   # Frontend assets
+│   │   ├── league_mapping.json
+│   │   ├── league_id_to_encoded.json
+│   │   └── example_games_real.json
 │   ├── processed/
 │   │   └── processed_data.csv
 │   ├── raw/
@@ -26,36 +35,55 @@ The directory structure is as follows:
 │   ├── raw.dvc                     # DVC pointer file
 │   └── README.md
 ├── models/                         # Trained models
+│   ├── best_model.pth              # PyTorch model
+│   └── best_model.onnx             # ONNX optimized model
 ├── notebooks/                      # Jupyter notebooks
-├── reports/                        # Reports
-│   └── figures/
+├── reports/                        # Reports and analysis
+│   ├── figures/
+│   └── Report.md                   # Exam report
 ├── scripts/                        # Utility scripts
+│   ├── create_league_mapping.py
+│   ├── create_league_encoding_mapping.py
+│   ├── extract_real_examples.py
+│   ├── test_drift_monitoring.py
+│   ├── setup_monitoring.py
+│   ├── deploy_api.py
+│   ├── launch_sweep.py
+│   ├── submit_gcp_training.py
+│   └── wandb_init.py
 ├── src/                            # Source code
 │   └── mlops_project/
 │       ├── __init__.py
-│       ├── api.py                  # FastAPI application
+│       ├── api.py                  # FastAPI with ONNX/PyTorch support
 │       ├── data.py                 # Dataset class
+│       ├── data_drift.py           # Evidently AI drift detection
 │       ├── evaluate.py             # Model evaluation
-│       ├── model.py                # LSTM model
-│       ├── profile.py              # Performance profiling
-│       ├── train.py                # Training script
+│       ├── model.py                # LSTM model with attention
+│       ├── export_onnx.py          # ONNX export utility
+│       ├── profiling.py            # cProfile performance analysis
+│       ├── test_torch_compile.py   # torch.compile testing
+│       ├── train.py                # Training script (Hydra)
+│       ├── train_sweep.py          # W&B sweep training
 │       └── visualize.py            # Visualization utilities
-├── tests/                          # Test suite (35% coverage)
+├── tests/                          # Test suite (28 tests, 21% coverage)
 │   ├── __init__.py
-│   ├── test_api.py
-│   ├── test_data.py
-│   └── test_model.py
+│   ├── test_api.py                 # API endpoint tests
+│   ├── test_data.py                # Dataset tests
+│   ├── test_model.py               # Model architecture tests
+│   └── locustfile.py               # Load testing
 ├── wandb/                          # Weights & Biases artifacts
 ├── .dvc/                           # DVC configuration
 ├── .dvcignore
 ├── .gitignore
-├── .pre-commit-config.yaml         # Pre-commit hooks (ruff)
+├── .pre-commit-config.yaml         # Pre-commit hooks (ruff, yaml)
 ├── LICENSE
+├── api.dockerfile                  # API Docker image (ONNX)
+├── train.dockerfile                # Training Docker image
+├── cloudbuild.yaml                 # GCP Cloud Build trigger
+├── frontend.py                     # Streamlit frontend
 ├── pyproject.toml                  # Python project file
 ├── README.md                       # Project README
 ├── requirements.txt                # Project dependencies
 ├── requirements_dev.txt            # Development requirements
-├── tasks.py                        # Project tasks
-├── train.dockerfile                # Docker training image
-└── wandb_init.py                   # W&B initialization
+└── tasks.py                        # Invoke tasks
 ```

@@ -67,30 +67,36 @@ class MyDataset(Dataset):
     def _add_aggregated_features(self):
         """Add aggregated statistics across historical matches for better learning."""
         import re
-        
+
         # Find goal and rating columns for each match in history
         for i in range(1, self.seq_len + 1):
             # Get all goal and rating columns for match i
-            pattern = rf'_{i}$'
+            pattern = rf"_{i}$"
             match_cols = [c for c in self.df.columns if re.search(pattern, c)]
-            
-            goal_cols_i = [c for c in match_cols if 'goal' in c.lower()]
-            rating_cols_i = [c for c in match_cols if 'rating' in c.lower()]
-            
+
+            goal_cols_i = [c for c in match_cols if "goal" in c.lower()]
+            rating_cols_i = [c for c in match_cols if "rating" in c.lower()]
+
             # Add aggregated features for this match
             if goal_cols_i:
                 # Average of goals scored and conceded in this match
-                self.df[f'total_goals_{i}'] = self.df[goal_cols_i].sum(axis=1)
-                self.df[f'goal_diff_{i}'] = self.df[goal_cols_i].iloc[:, 0] - self.df[goal_cols_i].iloc[:, 1] if len(goal_cols_i) >= 2 else 0
-            
+                self.df[f"total_goals_{i}"] = self.df[goal_cols_i].sum(axis=1)
+                self.df[f"goal_diff_{i}"] = (
+                    self.df[goal_cols_i].iloc[:, 0] - self.df[goal_cols_i].iloc[:, 1] if len(goal_cols_i) >= 2 else 0
+                )
+
             if rating_cols_i:
                 # Average rating for this match
-                self.df[f'avg_rating_{i}'] = self.df[rating_cols_i].mean(axis=1)
-                self.df[f'rating_diff_{i}'] = self.df[rating_cols_i].iloc[:, 0] - self.df[rating_cols_i].iloc[:, 1] if len(rating_cols_i) >= 2 else 0
-            
+                self.df[f"avg_rating_{i}"] = self.df[rating_cols_i].mean(axis=1)
+                self.df[f"rating_diff_{i}"] = (
+                    self.df[rating_cols_i].iloc[:, 0] - self.df[rating_cols_i].iloc[:, 1]
+                    if len(rating_cols_i) >= 2
+                    else 0
+                )
+
             # Add these new columns to the sequence columns
-            new_cols = [f'total_goals_{i}', f'goal_diff_{i}', f'avg_rating_{i}', f'rating_diff_{i}']
-            self.seq_columns[i-1].extend([c for c in new_cols if c in self.df.columns])
+            new_cols = [f"total_goals_{i}", f"goal_diff_{i}", f"avg_rating_{i}", f"rating_diff_{i}"]
+            self.seq_columns[i - 1].extend([c for c in new_cols if c in self.df.columns])
 
     def preprocess(self, output_folder: Path) -> None:
         """Preprocess the raw data and save it to the output folder."""

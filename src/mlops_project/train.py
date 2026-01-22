@@ -3,11 +3,11 @@ from pathlib import Path
 
 import hydra
 import torch
+import torch.nn.functional as func
 from omegaconf import DictConfig, OmegaConf
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
-import torch.nn.functional as F
 
 import wandb
 from mlops_project.data import MyDataset
@@ -21,20 +21,21 @@ class FocalLoss(nn.Module):
     Focal Loss to address class imbalance by focusing on hard examples.
     Helps prevent the model from just predicting the majority class.
     """
-    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+
+    def __init__(self, alpha=None, gamma=2.0, reduction="mean"):
         super().__init__()
         self.alpha = alpha  # Class weights
         self.gamma = gamma  # Focusing parameter
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        ce_loss = F.cross_entropy(inputs, targets, weight=self.alpha, reduction='none')
+        ce_loss = func.cross_entropy(inputs, targets, weight=self.alpha, reduction="none")
         pt = torch.exp(-ce_loss)
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss
 
-        if self.reduction == 'mean':
+        if self.reduction == "mean":
             return focal_loss.mean()
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             return focal_loss.sum()
         else:
             return focal_loss
@@ -118,11 +119,9 @@ def train(cfg: DictConfig) -> None:
         log.info("Using CrossEntropy Loss")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.hyperparameters.lr)
-    
+
     # Add learning rate scheduler for better convergence
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=3, verbose=True
-    )
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=3, verbose=True)
 
     # Training loop
     for epoch in range(cfg.hyperparameters.epochs):
@@ -231,24 +230,27 @@ def train(cfg: DictConfig) -> None:
     import os
     import subprocess
     from datetime import datetime
-    
+
     if os.getenv("CLOUD_ML_JOB_ID"):  # Running on GCP
         try:
             gcs_bucket = cfg.get("gcp", {}).get("bucket_models", "mlops-484822-models")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
+
             # Save to MULTIPLE locations for safety
             paths_to_upload = [
                 (str(model_path), f"gs://{gcs_bucket}/best_model.pth"),
                 (str(model_path), f"gs://{gcs_bucket}/backups/best_model_{timestamp}.pth"),
-                (str(model_path), f"gs://{gcs_bucket}/trained_models/model_epoch{cfg.hyperparameters.epochs}_{timestamp}.pth"),
+                (
+                    str(model_path),
+                    f"gs://{gcs_bucket}/trained_models/model_epoch{cfg.hyperparameters.epochs}_{timestamp}.pth",
+                ),
             ]
-            
+
             for local_path, gcs_path in paths_to_upload:
                 log.info(f"Uploading model to {gcs_path}...")
                 subprocess.run(["gsutil", "cp", local_path, gcs_path], check=True)
                 log.info(f"✅ Model uploaded to GCS: {gcs_path}")
-            
+
             log.info(f"🎉 Model saved to {len(paths_to_upload)} GCS locations successfully!")
         except Exception as e:
             log.error(f"❌ CRITICAL: Failed to upload model to GCS: {e}")

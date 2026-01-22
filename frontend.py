@@ -97,7 +97,7 @@ with tab1:
         "Liga Nacional",
         "Premiership",
     ]
-    popular_leagues = [l for l in popular_leagues if l in LEAGUE_NAME_TO_ID]
+    popular_leagues = [league for league in popular_leagues if league in LEAGUE_NAME_TO_ID]
     all_league_names = sorted(LEAGUE_NAME_TO_ID.keys())
 
     col_league1, col_league2 = st.columns(2)

@@ -28,9 +28,9 @@ RUN python -c "import tqdm; import numpy; import torch; print(f'tqdm: {tqdm.__ve
 
 COPY configs/ configs/
 COPY src/ src/
-COPY data/processed/processed_data.csv data/processed/processed_data.csv
 
-# Create directories for models
+# Create directories for data and models
+RUN mkdir -p data/processed models
 RUN mkdir -p models
 
 # Set environment variables

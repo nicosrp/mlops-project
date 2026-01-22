@@ -1,41 +1,23 @@
+import time
 from pathlib import Path
 from typing import Any
-import time
 
 import torch
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_client import Counter, Histogram, Gauge
+from pydantic import BaseModel, Field
 
 from mlops_project.model import Model
 
 app = FastAPI(title="Football Match Prediction API", version="1.0.0")
 
 # Prometheus metrics
-prediction_counter = Counter(
-    "predictions_total",
-    "Total number of predictions",
-    ["outcome"]
-)
-prediction_probabilities = Histogram(
-    "prediction_probability",
-    "Distribution of prediction probabilities",
-    ["outcome"]
-)
-inference_duration = Histogram(
-    "model_inference_duration_seconds",
-    "Time taken for model inference"
-)
-model_loaded_gauge = Gauge(
-    "model_loaded",
-    "Whether the model is loaded (1) or not (0)"
-)
-prediction_errors = Counter(
-    "prediction_errors_total",
-    "Total number of prediction errors",
-    ["error_type"]
-)
+prediction_counter = Counter("predictions_total", "Total number of predictions", ["outcome"])
+prediction_probabilities = Histogram("prediction_probability", "Distribution of prediction probabilities", ["outcome"])
+inference_duration = Histogram("model_inference_duration_seconds", "Time taken for model inference")
+model_loaded_gauge = Gauge("model_loaded", "Whether the model is loaded (1) or not (0)")
+prediction_errors = Counter("prediction_errors_total", "Total number of prediction errors", ["error_type"])
 
 # Initialize Prometheus instrumentation
 instrumentator = Instrumentator()
@@ -123,7 +105,7 @@ async def predict(input_data: PredictionInput) -> PredictionOutput:
     try:
         # Start timing
         start_time = time.time()
-        
+
         # Convert input to tensor
         features_tensor = torch.tensor(input_data.features, dtype=torch.float32)
 

@@ -31,6 +31,7 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["I", "N", "E", "W", ]
+ignore = ["E501"]  # Ignore line length for now
 
 [tool.coverage.run]
 omit = ["tests/*"]

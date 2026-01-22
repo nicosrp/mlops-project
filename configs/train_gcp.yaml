@@ -1,0 +1,28 @@
+hyperparameters:
+  batch_size: 16
+  epochs: 10
+  lr: 0.001
+  hidden_size: 64
+  num_layers: 2
+  dropout: 0.3
+  seq_len: 10
+
+training:
+  train_split: 0.8
+  seed: 42
+
+paths:
+  # For GCP, use gs:// paths or download to local
+  dataset: "data/processed/processed_data.csv"
+  model_dir: "models"
+
+wandb:
+  project: "football-lstm"
+  entity: "tyranguyen7-danmarks-tekniske-universitet-dtu"
+  mode: "online"
+
+gcp:
+  bucket_data: "${oc.env:GCP_BUCKET_DATA,mlops-football-lstm-data}"
+  bucket_models: "${oc.env:GCP_BUCKET_MODELS,mlops-football-lstm-models}"
+  project_id: "${oc.env:GCP_PROJECT_ID,mlops-football-lstm}"
+  region: "${oc.env:GCP_REGION,europe-west1}"

@@ -1,13 +1,45 @@
 from pathlib import Path
 from typing import Any
+import time
 
 import torch
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter, Histogram, Gauge
 
 from mlops_project.model import Model
 
 app = FastAPI(title="Football Match Prediction API", version="1.0.0")
+
+# Prometheus metrics
+prediction_counter = Counter(
+    "predictions_total",
+    "Total number of predictions",
+    ["outcome"]
+)
+prediction_probabilities = Histogram(
+    "prediction_probability",
+    "Distribution of prediction probabilities",
+    ["outcome"]
+)
+inference_duration = Histogram(
+    "model_inference_duration_seconds",
+    "Time taken for model inference"
+)
+model_loaded_gauge = Gauge(
+    "model_loaded",
+    "Whether the model is loaded (1) or not (0)"
+)
+prediction_errors = Counter(
+    "prediction_errors_total",
+    "Total number of prediction errors",
+    ["error_type"]
+)
+
+# Initialize Prometheus instrumentation
+instrumentator = Instrumentator()
+instrumentator.instrument(app).expose(app)
 
 
 class PredictionInput(BaseModel):
@@ -38,11 +70,12 @@ async def load_model() -> None:
 
     if not model_path.exists():
         print(f"Warning: Model file not found at {model_path}")
+        model_loaded_gauge.set(0)
         return
 
     try:
         checkpoint = torch.load(model_path, map_location=torch.device("cpu"))
-        input_size = checkpoint.get("input_size", 444)  # Default from training
+        input_size = checkpoint.get("input_size", 22)  # 22 features per match
 
         model = Model(
             input_size=input_size,
@@ -53,8 +86,10 @@ async def load_model() -> None:
         )
         model.load_state_dict(checkpoint["model_state_dict"])
         model.eval()
+        model_loaded_gauge.set(1)
         print(f"Model loaded successfully from {model_path}")
     except Exception as e:
+        model_loaded_gauge.set(0)
         print(f"Error loading model: {e}")
 
 
@@ -82,9 +117,13 @@ async def predict(input_data: PredictionInput) -> PredictionOutput:
         Predicted outcome and class probabilities
     """
     if model is None:
+        prediction_errors.labels(error_type="model_not_loaded").inc()
         raise HTTPException(status_code=503, detail="Model not loaded")
 
     try:
+        # Start timing
+        start_time = time.time()
+        
         # Convert input to tensor
         features_tensor = torch.tensor(input_data.features, dtype=torch.float32)
 
@@ -96,6 +135,9 @@ async def predict(input_data: PredictionInput) -> PredictionOutput:
             logits = model(features_tensor)
             probabilities = torch.softmax(logits, dim=1)[0]
 
+        # Record inference time
+        inference_duration.observe(time.time() - start_time)
+
         # Get predicted class
         predicted_class = torch.argmax(probabilities).item()
         predicted_label = label_map[predicted_class]
@@ -103,9 +145,18 @@ async def predict(input_data: PredictionInput) -> PredictionOutput:
         # Convert probabilities to dict
         prob_dict = {label_map[i]: float(probabilities[i]) for i in range(len(probabilities))}
 
+        # Update metrics
+        prediction_counter.labels(outcome=predicted_label).inc()
+        for outcome, prob in prob_dict.items():
+            prediction_probabilities.labels(outcome=outcome).observe(prob)
+
         return PredictionOutput(prediction=predicted_label, probabilities=prob_dict)
 
+    except ValueError as e:
+        prediction_errors.labels(error_type="invalid_input").inc()
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
     except Exception as e:
+        prediction_errors.labels(error_type="unknown").inc()
         raise HTTPException(status_code=400, detail=f"Prediction error: {str(e)}")
 
 

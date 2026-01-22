@@ -8,3 +8,8 @@ typer
 omegaconf
 hydra-core
 wandb
+streamlit
+uvicorn
+tqdm
+prometheus-fastapi-instrumentator
+prometheus-client

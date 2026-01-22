@@ -2,9 +2,9 @@
 
 ## Project Description:
 
-As football enthusiasts, this project aims to shift the perspective from simply being fans to using match data to gain insights into what drives a team's success. We aim to predict the probability of each match outcome (home win, draw, or away win) for each team and each match. We are using the [Football Match Probability Prediction](https://www.kaggle.com/competitions/football-match-probability-prediction/data) dataset from the Kaggle competition. The dataset is composed of more than 150,000 football matches in the world, with descriptive features on home vs. away teams, league, and coaches, in addition to historical information on the previous 10 matches for both home and away teams, such as date, number of goals scored, number of goals conceded, and more.
+As football enthusiasts, this project aims to shift the perspective from simply being fans to using match data to gain insights into what drives a team's success. We aim to predict the probability of each match outcome (home win, draw, or away win) for each team and each match. We are using the [Football Match Probability Prediction](https://www.kaggle.com/competitions/football-match-probability-prediction/data) dataset from Kaggle. The dataset is composed of more than 150,000 football matches worldwide, with descriptive features including home vs. away teams, league, and coaches, in addition to historical information on the previous 10 matches for both home and away teams, such as date, number of goals scored, number of goals conceded, and more.
 
-A potential pipeline could include training a multiclass probabilistic classifier with cross-entropy loss, tracking experiments and model versions using Weights and Biases, and deploying an ML service that predicts home, draw, and away win probabilities for incoming match data. Results could be benchmarked against dummy-like equal probability classifications or the previous winners' choice. We may also explore an LSTM due to the sequence-nature of the data.
+We employ a Long Short-Term Memory (LSTM) Model to leverage the sequential nature of historical match data, processing up to 10 previous matches per team to highlight temporal patterns and performance trends. The project implements a complete MLOps pipeline including CI/CD automation, cloud training on GCP Vertex AI, experiment tracking with Weights & Biases, and deployment to Google Cloud Run with comprehensive monitoring (Prometheus, Evidently drift detection). Additionally, we developed a Streamlit frontend for user-friendly predictions.
 
 ## Project structure
 
@@ -20,6 +20,7 @@ The directory structure is as follows:
 │   ├── train.yaml                  # Main training config
 │   ├── train_gcp.yaml              # GCP training config
 │   ├── train_gpu.yaml              # GPU training config
+│   ├── train_sample.yaml           # Sample training config
 │   └── sweep.yaml                  # W&B sweep config
 ├── data/                           # Data directory (DVC tracked)
 │   ├── frontend/                   # Frontend assets
@@ -35,55 +36,62 @@ The directory structure is as follows:
 │   ├── raw.dvc                     # DVC pointer file
 │   └── README.md
 ├── models/                         # Trained models
-│   ├── best_model.pth              # PyTorch model
-│   └── best_model.onnx             # ONNX optimized model
-├── notebooks/                      # Jupyter notebooks
+│   └── best_model.pth              # PyTorch model checkpoint
+├── notebooks/                      # Jupyter notebooks for exploration
 ├── reports/                        # Reports and analysis
 │   ├── figures/
-│   └── Report.md                   # Exam report
+│   ├── report.py                   # Report generation script
+│   └── README.md
 ├── scripts/                        # Utility scripts
-│   ├── create_league_mapping.py
+│   ├── create_balanced_sample.py
 │   ├── create_league_encoding_mapping.py
-│   ├── extract_real_examples.py
-│   ├── test_drift_monitoring.py
-│   ├── setup_monitoring.py
+│   ├── create_league_mapping.py
 │   ├── deploy_api.py
+│   ├── extract_real_examples.py
 │   ├── launch_sweep.py
+│   ├── run_sweep.bat
+│   ├── run_sweep.py
+│   ├── run_sweeps_venv.ps1
+│   ├── setup_monitoring.py
+│   ├── submit_gcp_gpu.py
 │   ├── submit_gcp_training.py
+│   ├── test_drift_monitoring.py
 │   └── wandb_init.py
 ├── src/                            # Source code
 │   └── mlops_project/
 │       ├── __init__.py
-│       ├── api.py                  # FastAPI with ONNX/PyTorch support
+│       ├── api.py                  # FastAPI application
 │       ├── data.py                 # Dataset class
 │       ├── data_drift.py           # Evidently AI drift detection
 │       ├── evaluate.py             # Model evaluation
-│       ├── model.py                # LSTM model with attention
 │       ├── export_onnx.py          # ONNX export utility
-│       ├── profiling.py            # cProfile performance analysis
+│       ├── model.py                # LSTM model with attention
+│       ├── profile.py              # cProfile performance analysis
 │       ├── test_torch_compile.py   # torch.compile testing
 │       ├── train.py                # Training script (Hydra)
 │       ├── train_sweep.py          # W&B sweep training
 │       └── visualize.py            # Visualization utilities
-├── tests/                          # Test suite (28 tests, 21% coverage)
+├── tests/                          # Test suite (17 tests)
 │   ├── __init__.py
-│   ├── test_api.py                 # API endpoint tests
-│   ├── test_data.py                # Dataset tests
-│   ├── test_model.py               # Model architecture tests
-│   └── locustfile.py               # Load testing
+│   ├── test_api.py                 # API endpoint tests (7 tests)
+│   ├── test_data.py                # Dataset tests (5 tests)
+│   ├── test_model.py               # Model architecture tests (5 tests)
+│   └── locustfile.py               # Load testing with Locust
 ├── wandb/                          # Weights & Biases artifacts
 ├── .dvc/                           # DVC configuration
-├── .dvcignore
-├── .gitignore
-├── .pre-commit-config.yaml         # Pre-commit hooks (ruff, yaml)
-├── LICENSE
-├── api.dockerfile                  # API Docker image (ONNX)
-├── train.dockerfile                # Training Docker image
-├── cloudbuild.yaml                 # GCP Cloud Build trigger
+├── .dvcignore                      # DVC ignore patterns
+├── .gitignore                      # Git ignore patterns
+├── .pre-commit-config.yaml         # Pre-commit hooks (ruff)
+├── .python-version                 # Python version specification
+├── api.dockerfile                  # API Docker image
+├── cloudbuild.yaml                 # GCP Cloud Build configuration
 ├── frontend.py                     # Streamlit frontend
-├── pyproject.toml                  # Python project file
+├── LICENSE                         # Project license
+├── pyproject.toml                  # Python project configuration
 ├── README.md                       # Project README
 ├── requirements.txt                # Project dependencies
-├── requirements_dev.txt            # Development requirements
-└── tasks.py                        # Invoke tasks
+├── requirements_dev.txt            # Development dependencies
+├── tasks.py                        # Invoke automation tasks
+├── test_drift_monitoring.py        # Drift monitoring test script
+└── train.dockerfile                # Training Docker image
 ```

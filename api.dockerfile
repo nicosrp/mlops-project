@@ -24,8 +24,8 @@ COPY pyproject.toml .
 # Install package
 RUN pip install --no-cache-dir -e .
 
-# Copy the model file (will be baked into image)
-COPY models/best_model.pth models/best_model.pth
+# Copy the ONNX model file (optimized inference)
+COPY models/best_model.onnx models/best_model.onnx
 
 # Expose port (Cloud Run uses PORT env variable, defaults to 8080)
 EXPOSE 8080

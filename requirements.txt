@@ -13,3 +13,4 @@ uvicorn
 tqdm
 prometheus-fastapi-instrumentator
 prometheus-client
+evidently

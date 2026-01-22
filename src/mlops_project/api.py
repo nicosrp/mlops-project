@@ -1,9 +1,12 @@
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import torch
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
@@ -42,6 +45,51 @@ class PredictionOutput(BaseModel):
 # Global model instance (loaded on startup)
 model: Model | None = None
 label_map = {0: "home", 1: "draw", 2: "away"}
+
+# Database file for logging predictions
+PREDICTION_DB = Path("data/prediction_database.csv")
+
+
+def log_prediction_to_db(timestamp: str, features: list[list[float]], prediction: str, probabilities: dict) -> None:
+    """
+    Background task to log predictions to CSV database.
+
+    Args:
+        timestamp: Timestamp of the prediction
+        features: Input features (flattened for storage)
+        prediction: Predicted class
+        probabilities: Prediction probabilities
+    """
+    try:
+        # Create data directory if it doesn't exist
+        PREDICTION_DB.parent.mkdir(parents=True, exist_ok=True)
+
+        # Flatten features for storage (take mean across sequence)
+        features_tensor = torch.tensor(features)
+        feature_means = features_tensor.mean(dim=0).tolist()
+
+        # Create row data
+        row_data = {
+            "time": timestamp,
+            "prediction": prediction,
+            "prob_home": probabilities["home"],
+            "prob_draw": probabilities["draw"],
+            "prob_away": probabilities["away"],
+        }
+
+        # Add feature columns (assuming 22 features)
+        for i, val in enumerate(feature_means):
+            row_data[f"feature_{i}"] = val
+
+        # Append to CSV
+        df = pd.DataFrame([row_data])
+        if PREDICTION_DB.exists():
+            df.to_csv(PREDICTION_DB, mode="a", header=False, index=False)
+        else:
+            df.to_csv(PREDICTION_DB, mode="w", header=True, index=False)
+
+    except Exception as e:
+        print(f"Error logging prediction: {e}")
 
 
 @app.on_event("startup")
@@ -88,12 +136,13 @@ async def health() -> dict[str, Any]:
 
 
 @app.post("/predict", response_model=PredictionOutput)
-async def predict(input_data: PredictionInput) -> PredictionOutput:
+async def predict(input_data: PredictionInput, background_tasks: BackgroundTasks) -> PredictionOutput:
     """
     Predict match outcome based on historical match features.
 
     Args:
         input_data: Historical match features (seq_len, feature_dim)
+        background_tasks: FastAPI background tasks for logging
 
     Returns:
         Predicted outcome and class probabilities
@@ -132,6 +181,10 @@ async def predict(input_data: PredictionInput) -> PredictionOutput:
         for outcome, prob in prob_dict.items():
             prediction_probabilities.labels(outcome=outcome).observe(prob)
 
+        # Log prediction to database (background task)
+        timestamp = datetime.now().isoformat()
+        background_tasks.add_task(log_prediction_to_db, timestamp, input_data.features, predicted_label, prob_dict)
+
         return PredictionOutput(prediction=predicted_label, probabilities=prob_dict)
 
     except ValueError as e:
@@ -140,6 +193,77 @@ async def predict(input_data: PredictionInput) -> PredictionOutput:
     except Exception as e:
         prediction_errors.labels(error_type="unknown").inc()
         raise HTTPException(status_code=400, detail=f"Prediction error: {str(e)}")
+
+
+@app.get("/monitoring", response_class=HTMLResponse)
+async def monitoring(n_samples: int = 100) -> str:
+    """
+    Generate and return data drift monitoring report.
+
+    Args:
+        n_samples: Number of latest predictions to analyze
+
+    Returns:
+        HTML report showing data drift analysis
+    """
+    try:
+        from evidently import ColumnMapping
+        from evidently.metric_preset import DataDriftPreset, DataQualityPreset, TargetDriftPreset
+        from evidently.report import Report
+
+        # Load prediction database
+        if not PREDICTION_DB.exists():
+            return "<html><body><h1>No prediction data available</h1><p>Make some predictions first.</p></body></html>"
+
+        current_data = pd.read_csv(PREDICTION_DB)
+
+        if len(current_data) == 0:
+            return "<html><body><h1>No prediction data available</h1><p>Database is empty.</p></body></html>"
+
+        # Get last n samples
+        current_data = current_data.tail(n_samples)
+
+        # Load reference data (you'll need to provide this)
+        # For now, we'll use the first half of data as reference if enough data exists
+        if len(current_data) < 20:
+            return f"<html><body><h1>Insufficient data</h1><p>Need at least 20 predictions. Current: {len(current_data)}</p></body></html>"
+
+        # Split data for demo purposes (in production, use actual training data)
+        split_idx = len(current_data) // 2
+        reference_data = current_data.iloc[:split_idx].copy()
+        current_data = current_data.iloc[split_idx:].copy()
+
+        # Standardize data
+        if "time" in current_data.columns:
+            current_data = current_data.drop(columns=["time"])
+            reference_data = reference_data.drop(columns=["time"])
+
+        if "prediction" in current_data.columns:
+            label_map_reverse = {"home": 0, "draw": 1, "away": 2}
+            current_data["target"] = current_data["prediction"].map(label_map_reverse)
+            reference_data["target"] = reference_data["prediction"].map(label_map_reverse)
+            current_data = current_data.drop(columns=["prediction"])
+            reference_data = reference_data.drop(columns=["prediction"])
+
+        # Remove probability columns
+        prob_cols = [col for col in current_data.columns if col.startswith("prob_")]
+        if prob_cols:
+            current_data = current_data.drop(columns=prob_cols)
+            reference_data = reference_data.drop(columns=prob_cols)
+
+        # Define column mapping
+        column_mapping = ColumnMapping(target="target")
+
+        # Generate report
+        report = Report(metrics=[DataDriftPreset(), DataQualityPreset(), TargetDriftPreset()])
+
+        report.run(reference_data=reference_data, current_data=current_data, column_mapping=column_mapping)
+
+        # Return HTML
+        return report.get_html()
+
+    except Exception as e:
+        return f"<html><body><h1>Error generating report</h1><p>{str(e)}</p></body></html>"
 
 
 if __name__ == "__main__":

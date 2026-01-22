@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import onnxruntime as ort
 import pandas as pd
 import torch
 from fastapi import BackgroundTasks, FastAPI, HTTPException
@@ -12,6 +11,16 @@ from fastapi.responses import HTMLResponse
 from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
+
+# Try to import ONNX Runtime, fall back to PyTorch if not available
+try:
+    import onnxruntime as ort
+
+    ONNX_AVAILABLE = True
+except ImportError:
+    ONNX_AVAILABLE = False
+    # Fallback to PyTorch model for testing/development
+    from mlops_project.model import Model
 
 app = FastAPI(title="Football Match Prediction API", version="1.0.0")
 
@@ -42,8 +51,9 @@ class PredictionOutput(BaseModel):
     probabilities: dict[str, float] = Field(..., description="Class probabilities")
 
 
-# Global ONNX session (loaded on startup)
-onnx_session: ort.InferenceSession | None = None
+# Global model instance (ONNX or PyTorch depending on availability)
+onnx_session = None
+pytorch_model = None
 label_map = {0: "home", 1: "draw", 2: "away"}
 
 # Database file for logging predictions
@@ -94,30 +104,47 @@ def log_prediction_to_db(timestamp: str, features: list[list[float]], prediction
 
 @app.on_event("startup")
 async def load_model() -> None:
-    """Load the ONNX model on application startup."""
-    global onnx_session
-    model_path = Path("models/best_model.onnx")
+    """Load the model on application startup (ONNX or PyTorch fallback)."""
+    global onnx_session, pytorch_model
 
-    if not model_path.exists():
-        print(f"Warning: ONNX model file not found at {model_path}")
+    # Try ONNX first
+    if ONNX_AVAILABLE:
+        onnx_path = Path("models/best_model.onnx")
+        if onnx_path.exists():
+            try:
+                session_options = ort.SessionOptions()
+                session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                onnx_session = ort.InferenceSession(
+                    str(onnx_path), sess_options=session_options, providers=["CPUExecutionProvider"]
+                )
+                model_loaded_gauge.set(1)
+                print(f"ONNX model loaded from {onnx_path}")
+                return
+            except Exception as e:
+                print(f"Error loading ONNX model: {e}")
+
+    # Fallback to PyTorch
+    pytorch_path = Path("models/best_model.pth")
+    if pytorch_path.exists():
+        try:
+            checkpoint = torch.load(pytorch_path, map_location=torch.device("cpu"))
+            pytorch_model = Model(
+                input_size=checkpoint.get("input_size", 22),
+                hidden_size=checkpoint.get("hidden_size", 64),
+                num_layers=checkpoint.get("num_layers", 2),
+                output_size=3,
+                dropout=checkpoint.get("dropout", 0.3),
+            )
+            pytorch_model.load_state_dict(checkpoint["model_state_dict"])
+            pytorch_model.eval()
+            model_loaded_gauge.set(1)
+            print(f"PyTorch model loaded from {pytorch_path}")
+        except Exception as e:
+            model_loaded_gauge.set(0)
+            print(f"Error loading PyTorch model: {e}")
+    else:
         model_loaded_gauge.set(0)
-        return
-
-    try:
-        # Load ONNX model with optimized settings
-        session_options = ort.SessionOptions()
-        session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-
-        onnx_session = ort.InferenceSession(
-            str(model_path), sess_options=session_options, providers=["CPUExecutionProvider"]
-        )
-        model_loaded_gauge.set(1)
-        print(f"ONNX model loaded successfully from {model_path}")
-        print(f"Input: {onnx_session.get_inputs()[0].name}, shape: {onnx_session.get_inputs()[0].shape}")
-        print(f"Output: {onnx_session.get_outputs()[0].name}, shape: {onnx_session.get_outputs()[0].shape}")
-    except Exception as e:
-        model_loaded_gauge.set(0)
-        print(f"Error loading ONNX model: {e}")
+        print("No model file found")
 
 
 @app.get("/")
@@ -129,13 +156,19 @@ async def root() -> dict[str, str]:
 @app.get("/health")
 async def health() -> dict[str, Any]:
     """Detailed health check with model status."""
-    return {"status": "ok", "model_loaded": onnx_session is not None, "model_type": "ONNX", "api_version": "1.0.0"}
+    model_type = "ONNX" if onnx_session is not None else ("PyTorch" if pytorch_model is not None else "None")
+    return {
+        "status": "ok",
+        "model_loaded": (onnx_session is not None or pytorch_model is not None),
+        "model_type": model_type,
+        "api_version": "1.0.0",
+    }
 
 
 @app.post("/predict", response_model=PredictionOutput)
 async def predict(input_data: PredictionInput, background_tasks: BackgroundTasks) -> PredictionOutput:
     """
-    Predict match outcome based on historical match features using ONNX model.
+    Predict match outcome based on historical match features.
 
     Args:
         input_data: Historical match features (seq_len, feature_dim)
@@ -144,28 +177,32 @@ async def predict(input_data: PredictionInput, background_tasks: BackgroundTasks
     Returns:
         Predicted outcome and class probabilities
     """
-    if onnx_session is None:
+    if onnx_session is None and pytorch_model is None:
         prediction_errors.labels(error_type="model_not_loaded").inc()
-        raise HTTPException(status_code=503, detail="ONNX model not loaded")
+        raise HTTPException(status_code=503, detail="Model not loaded")
 
     try:
         # Start timing
         start_time = time.time()
 
-        # Convert input to numpy array with correct shape: (1, seq_len, feature_dim)
-        features_array = np.array(input_data.features, dtype=np.float32)
-        features_array = np.expand_dims(features_array, axis=0)
-
-        # Get input name from ONNX model
-        input_name = onnx_session.get_inputs()[0].name
-
-        # Run ONNX inference
-        logits = onnx_session.run(None, {input_name: features_array})[0]
-
-        # Apply softmax to get probabilities
-        exp_logits = np.exp(logits - np.max(logits, axis=1, keepdims=True))
-        probabilities = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
-        probabilities = probabilities[0]
+        # Use ONNX if available, otherwise PyTorch
+        if onnx_session is not None:
+            # ONNX inference
+            features_array = np.array(input_data.features, dtype=np.float32)
+            features_array = np.expand_dims(features_array, axis=0)
+            input_name = onnx_session.get_inputs()[0].name
+            logits = onnx_session.run(None, {input_name: features_array})[0]
+            # Apply softmax
+            exp_logits = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+            probabilities = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+            probabilities = probabilities[0]
+        else:
+            # PyTorch inference
+            features_tensor = torch.tensor(input_data.features, dtype=torch.float32)
+            features_tensor = features_tensor.unsqueeze(0)
+            with torch.no_grad():
+                logits = pytorch_model(features_tensor)
+                probabilities = torch.softmax(logits, dim=1)[0].numpy()
 
         # Record inference time
         inference_duration.observe(time.time() - start_time)

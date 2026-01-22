@@ -80,42 +80,39 @@ def main():
 
     job_name = f"football-lstm-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-    # Get WandB API key
+    # Get WandB API key from environment
     import os
 
-    # Use environment variable or fallback to hardcoded key
-    wandb_key = os.getenv("WANDB_API_KEY") or "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"
+    wandb_key = os.getenv("WANDB_API_KEY")
+    if not wandb_key:
+        print("⚠️  Warning: WANDB_API_KEY environment variable not set. Training will run without WandB logging.")
+        print("   Set it with: $env:WANDB_API_KEY='your-key-here' (PowerShell)")
+        print("   Or: export WANDB_API_KEY='your-key-here' (Linux/Mac)")
 
-    # Create job config with environment variables  
+    # Create job config with environment variables
     # Note: config file should NOT include displayName - that's passed as a flag
     job_config = {
         "workerPoolSpecs": [
             {
-                "machineSpec": {
-                    "machineType": "n1-standard-4"
-                },
+                "machineSpec": {"machineType": "n1-standard-4"},
                 "replicaCount": 1,
-                "containerSpec": {
-                    "imageUri": IMAGE_NAME,
-                    "args": ["--config-name=train"]
-                }
+                "containerSpec": {"imageUri": IMAGE_NAME, "args": ["--config-name=train"]},
             }
         ]
     }
-    
+
     # Add environment variables if WandB key exists
     if wandb_key:
-        job_config["workerPoolSpecs"][0]["containerSpec"]["env"] = [
-            {"name": "WANDB_API_KEY", "value": wandb_key}
-        ]
-    
+        job_config["workerPoolSpecs"][0]["containerSpec"]["env"] = [{"name": "WANDB_API_KEY", "value": wandb_key}]
+
     # Write config to temp file
     import json
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(job_config, f)
         config_file = f.name
-    
+
     # Build command using config file
     cmd = [
         "gcloud",

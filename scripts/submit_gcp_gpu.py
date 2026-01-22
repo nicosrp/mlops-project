@@ -9,12 +9,12 @@ GPU Pricing (approximate, europe-west1):
 For this project, T4 is perfect: ~5-10 minutes training = $0.03-0.06 per run
 """
 
+import json
 import os
 import subprocess
 import sys
-from datetime import datetime
-import json
 import tempfile
+from datetime import datetime
 
 # Configuration
 PROJECT_ID = "mlops-484822"
@@ -92,8 +92,12 @@ def main():
 
     job_name = f"football-lstm-gpu-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-    # Use environment variable or fallback to hardcoded key
-    wandb_key = os.getenv("WANDB_API_KEY") or "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"
+    # Get WandB API key from environment
+    wandb_key = os.getenv("WANDB_API_KEY")
+    if not wandb_key:
+        print("⚠️  Warning: WANDB_API_KEY environment variable not set. Training will run without WandB logging.")
+        print("   Set it with: $env:WANDB_API_KEY='your-key-here' (PowerShell)")
+        print("   Or: export WANDB_API_KEY='your-key-here' (Linux/Mac)")
 
     # Job config with GPU
     job_config = {
@@ -102,24 +106,22 @@ def main():
                 "machineSpec": {
                     "machineType": "n1-standard-4",
                     "acceleratorType": "NVIDIA_TESLA_T4",
-                    "acceleratorCount": 1
+                    "acceleratorCount": 1,
                 },
                 "replicaCount": 1,
                 "containerSpec": {
                     "imageUri": IMAGE_NAME,
-                    "args": ["--config-name=train_gpu"]  # Use GPU config
-                }
+                    "args": ["--config-name=train_gpu"],  # Use GPU config
+                },
             }
         ]
     }
 
     if wandb_key:
-        job_config["workerPoolSpecs"][0]["containerSpec"]["env"] = [
-            {"name": "WANDB_API_KEY", "value": wandb_key}
-        ]
+        job_config["workerPoolSpecs"][0]["containerSpec"]["env"] = [{"name": "WANDB_API_KEY", "value": wandb_key}]
 
     # Write config to temp file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(job_config, f, indent=2)
         config_file = f.name
 

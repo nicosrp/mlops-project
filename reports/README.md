@@ -243,7 +243,7 @@ These concepts are crucial in larger projects because they ensure consistency ac
 >
 > Answer:
 
-Across our three test modules, we implemented 17 tests. The data pipeline contains 5 tests (test_data.py) to verify the dataset initialization, length, tensor shapes, label validity, and input dimensions. The LSTM model contains 5 tests (test_model.py) to verify initialization, forward passes, output shapes, different configurations, and parameter counts. The FastAPI application contains 7 tests (test_api.py) that validate the root and health endpoints, prediction endpoint structure, mock model predictions, invalid inputs, error handling when no model is loaded, and incorrect feature dimensions.
+Across our three test modules, we implemented 28 tests. The data pipeline contains 9 tests (test_data.py) to verify the dataset initialization, length, tensor shapes, label validity, input dimensions, consistency, and feature types. The LSTM model contains 10 tests (test_model.py) to verify initialization, forward passes, output shapes, different configurations, parameter counts, attention mechanisms, dropout, and training/evaluation modes. The FastAPI application contains 9 tests (test_api.py) that validate the root and health endpoints, prediction endpoint structure, mock model predictions, invalid inputs, error handling when no model is loaded, incorrect feature dimensions, metrics endpoint, and probability distributions.
 
 These tests ensure that the crucial components of our pipeline–data loading, model architecture, and API serving–function correctly.
 
